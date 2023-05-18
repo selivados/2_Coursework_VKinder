@@ -1,0 +1,2 @@
+TOKEN_VK_USER = ''
+TOKEN_VK_GROUP = ''
