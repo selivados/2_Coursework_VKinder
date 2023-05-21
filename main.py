@@ -23,16 +23,16 @@ def write_msg(user_id, message, vk_keyboard=None, attachment=None):
 def show_partners(user_data, vk_object, partners_data_list, keyboard, show_type):
     cursor = 0
     db = DBManager()
-    cursor = select_show_partner(user_data['user_id'], vk_object, partners_data_list, db, cursor-1, 1, keyboard)  #точно ли 1?!
+    cursor = select_show_partner(user_data['user_id'], vk_object, partners_data_list, db, cursor-1, 1, keyboard, show_type)
 
     for event in longpoll_group.listen():
         if event.type == VkEventType.MESSAGE_NEW:
             if event.to_me:
                 request = event.text
                 if request == "След":
-                    cursor = select_show_partner(user_data['user_id'], vk_object, partners_data_list, db, cursor, 1, keyboard)
+                    cursor = select_show_partner(user_data['user_id'], vk_object, partners_data_list, db, cursor, 1, keyboard, show_type)
                 elif request == "Пред":
-                    cursor = select_show_partner(user_data['user_id'], vk_object, partners_data_list, db, cursor, -1, keyboard)
+                    cursor = select_show_partner(user_data['user_id'], vk_object, partners_data_list, db, cursor, -1, keyboard, show_type)
                 elif (request == "Добавить в избранное") and (show_type == 'search'):
                     db.add_to_favorite_list(user_data, partners_data_list[cursor])
                     write_msg(user_data['user_id'], f"Партнёр добавлен в cписок избранных", keyboard)
@@ -51,12 +51,12 @@ def show_partners(user_data, vk_object, partners_data_list, keyboard, show_type)
                     write_msg(user_data['user_id'], f"Повторите команду")
 
 
-def select_show_partner(user_id, vk_object, partners_data_list, db, cursor, inc, keyboard):
+def select_show_partner(user_id, vk_object, partners_data_list, db, cursor, inc, keyboard, show_type):
     f = False
     cursor += inc
     while not f:
         if (cursor < len(partners_data_list)) and (cursor >= 0):
-            if not db.find_in_black_list(user_data, partners_data_list[cursor]):
+            if (not db.find_in_black_list(user_data, partners_data_list[cursor])) or ((show_type=='black') or (show_type=='favorite')):
                 show_one_partner(user_id, vk_object, partners_data_list[cursor], keyboard)
                 f = True
             else:
