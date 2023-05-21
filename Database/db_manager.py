@@ -455,7 +455,7 @@ class DBManager:
         self._create_db_connection()
         self.cursor.execute(
             """
-            SELECT first_name, last_name, age, city, photo_ids
+            SELECT first_name, last_name, age, city, photo_ids, partner_id
               FROM users AS u
                    JOIN black_list AS b
                    ON u.user_id = b.partner_id
@@ -474,7 +474,8 @@ class DBManager:
                 'last_name': data[1],
                 'age': data[2],
                 'city': data[3],
-                'photo_ids': data[4].split(',')
+                'photo_ids': data[4].split(','),
+                'user_id': data[5]
             }
             black_list.append(partner_data)
         return black_list
