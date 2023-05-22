@@ -2,12 +2,10 @@ from random import randrange
 import vk_api
 import json
 
-from vk_api.keyboard import VkKeyboard, VkKeyboardColor
-from vk_api.utils import get_random_id
 from vk_api.longpoll import VkLongPoll, VkEventType
 
 from Database.db_manager import DBManager
-from vk_config.VKManager import VKManager
+from VKManager.VKManager import VKManager
 from Settings.vk_config import TOKEN_VK_GROUP
 
 text_message_mainmenu = 'Напишите: \n Начать поиск \n Избранные \n Чёрный список'
@@ -17,7 +15,7 @@ def write_msg(user_id, message, vk_keyboard=None, attachment=None):
                                       'message': message,
                                       'random_id': randrange(10 ** 7),
                                       'keyboard': vk_keyboard,
-                                      'attachment': attachment}) #open('keyboard.json', 'r', encoding='UTF-8').read()})
+                                      'attachment': attachment})
 
 
 def show_partners(user_data, vk_object, partners_data_list, keyboard, show_type):
@@ -80,13 +78,9 @@ def show_one_partner(user_id, vk_object, partner, keyboard):
     for i in range(0, lens):
         photo_list.append('photo'  + str(partner['user_id']) + '_' + str(partner['photo_ids'][i]))
     photo_links = ','.join(photo_list)
-    message = f"{partner['first_name']} {partner['last_name']}, город {partner['city']} \n 'http://vk.com/id'{partner['user_id']}"
+    message = f"{partner['first_name']} {partner['last_name']}, город {partner['city']} \n http://vk.com/id{partner['user_id']}"
     partner_photos = vk_object.get_photos_id(partner['user_id'])
     write_msg(user_id, message, keyboard,  photo_links)
-
-
-    #print(vk_object.get_photos_id(partner['user_id']))
-
 
 def organize_search(user_data, vk_object, keyboard=None):
     write_msg(user_data['user_id'], "Введите нижнюю границу возраста.")
@@ -108,7 +102,7 @@ def organize_search(user_data, vk_object, keyboard=None):
         if partner_age_from <= partner_age_to:
             write_msg(event.user_id, "Идёт поиск...")
             if user_data['city_id']:
-                partner_list = vk_object.get_partner_list(partner_sex, partner_age_from, partner_age_to, user_data['city_id'])
+                partner_list = vk_object.get_partner_list(user_data['user_id'], partner_age_from, partner_age_to, user_data['city_id'])
             else:
                 partner_list = vk_object.get_partner_list(partner_sex, partner_age_from, partner_age_to)
             show_partners(user_data, vk_object, partner_list, keyboard, 'search')
@@ -139,13 +133,13 @@ def input_age(user_data):
 
 if __name__ == '__main__':
 
-    with open('keyboard.json', 'r', encoding='UTF-8') as f:
+    with open('keyboard/keyboard.json', 'r', encoding='UTF-8') as f:
         keyboard = f.read()
 
-    with open('keyboard_search.json', 'r', encoding='UTF-8') as f:
+    with open('keyboard/keyboard_search.json', 'r', encoding='UTF-8') as f:
         keyboard_search = f.read()
 
-    with open('keyboard_list.json', 'r', encoding='UTF-8') as f:
+    with open('keyboard/keyboard_list.json', 'r', encoding='UTF-8') as f:
         keyboard_list = f.read()
 
 
@@ -183,5 +177,3 @@ if __name__ == '__main__':
                         write_msg(event.user_id, f"В списке никого нет", keyboard)
                 else:
                     write_msg(event.user_id, "Не понял вашего ответа. Напишите: \n Начать поиск \n Избранные \n Чёрный список", keyboard)
-
-

@@ -1,0 +1,41 @@
+{  
+   "one_time":false,
+   "buttons":[  
+      [  
+         {  
+            "action":{  
+               "type":"text",
+               "payload":"{\"button\": \"1\"}",
+               "label":"Пред"
+            },
+            "color":"primary"
+         },
+         {  
+            "action":{  
+               "type":"text",
+               "payload":"{\"button\": \"2\"}",
+               "label":"Убрать из списка"
+            },
+            "color":"primary"
+         },
+         {  
+            "action":{  
+               "type":"text",
+               "payload":"{\"button\": \"4\"}",
+               "label":"След"
+            },
+            "color":"primary"
+         }
+      ],
+      [
+         {  
+            "action":{  
+               "type":"text",
+               "payload":"{\"button\": \"4\"}",
+               "label":"Выход в главное меню"
+            },
+            "color":"primary"
+         }
+      ]
+   ]
+}
