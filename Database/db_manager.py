@@ -324,7 +324,7 @@ class DBManager:
         self._create_db_connection()
         self.cursor.execute(
             """
-            SELECT first_name, last_name, age, city, photo_ids, partner_id
+            SELECT partner_id, first_name, last_name, age, city, photo_ids
               FROM users AS u
                    JOIN favorite_list AS f
                    ON u.user_id = f.partner_id
@@ -339,12 +339,12 @@ class DBManager:
         favorite_list = []
         for data in db_data:
             partner_data = {
-                'first_name': data[0],
-                'last_name': data[1],
-                'age': data[2],
-                'city': data[3],
-                'photo_ids': data[4].split(','),
-                'user_id': data[5]
+                'user_id': data[0],
+                'first_name': data[1],
+                'last_name': data[2],
+                'age': data[3],
+                'city': data[4],
+                'photo_ids': data[5].split(',')
             }
             favorite_list.append(partner_data)
         return favorite_list
@@ -455,7 +455,7 @@ class DBManager:
         self._create_db_connection()
         self.cursor.execute(
             """
-            SELECT first_name, last_name, age, city, photo_ids, partner_id
+            SELECT partner_id, first_name, last_name, age, city, photo_ids
               FROM users AS u
                    JOIN black_list AS b
                    ON u.user_id = b.partner_id
@@ -470,12 +470,12 @@ class DBManager:
         black_list = []
         for data in db_data:
             partner_data = {
-                'first_name': data[0],
-                'last_name': data[1],
-                'age': data[2],
-                'city': data[3],
-                'photo_ids': data[4].split(','),
-                'user_id': data[5]
+                'user_id': data[0],
+                'first_name': data[1],
+                'last_name': data[2],
+                'age': data[3],
+                'city': data[4],
+                'photo_ids': data[5].split(',')
             }
             black_list.append(partner_data)
         return black_list
