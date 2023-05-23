@@ -39,9 +39,11 @@ def show_partners(user_data, vk_object, partners_data_list, keyboard, show_type)
                     write_msg(user_data['user_id'], f"Партнёр добавлен в чёрный cписок", keyboard)
                 elif (request == "Убрать из списка") and (show_type == 'favorite'):
                     db.delete_from_favorite_list(user_data, partners_data_list[cursor])
+                    partners_data_list.pop(cursor)
                     write_msg(user_data['user_id'], f"Партнёр удалён из списка избранных", keyboard)
                 elif (request == "Убрать из списка") and (show_type == 'black'):
-                    db.delete_from_favorite_list(user_data, partners_data_list[cursor])
+                    db.delete_from_black_list(user_data, partners_data_list[cursor])
+                    partners_data_list.pop(cursor)
                     write_msg(user_data['user_id'], f"Партнёр удалён из чёрного списка", keyboard)
                 elif (request == "Выход в главное меню"):
                     break
@@ -78,25 +80,24 @@ def show_one_partner(user_id, vk_object, partner, keyboard):
     for i in range(0, lens):
         photo_list.append('photo'  + str(partner['user_id']) + '_' + str(partner['photo_ids'][i]))
     photo_links = ','.join(photo_list)
-    message = f"{partner['first_name']} {partner['last_name']}, город {partner['city']} \n http://vk.com/id{partner['user_id']}"
+    message = f"{partner['first_name']} {partner['last_name']} \n Возраст: {partner['age']} \n Город: {partner['city']} \n http://vk.com/id{partner['user_id']}"
     partner_photos = vk_object.get_photos_id(partner['user_id'])
     write_msg(user_id, message, keyboard,  photo_links)
 
 def organize_search(user_data, vk_object, keyboard=None):
-    write_msg(user_data['user_id'], "Введите нижнюю границу возраста.")
-    partner_age_from = 0
-    partner_age_to = 0
-
-    if user_data['sex'] == 1:
-        partner_sex = 2
+    if user_data['age']:
+        partner_age_from = user_data['age'] - 5
+        partner_age_to = user_data['age'] + 5
     else:
-        partner_sex = 1
+        write_msg(user_data['user_id'], "Введите нижнюю границу возраста.")
+        partner_age_from = 0
+        partner_age_to = 0
 
-    partner_age_from = input_age(user_data)
+        partner_age_from = input_age(user_data)
 
-    if partner_age_from:
-        write_msg(user_data['user_id'], "Введите верхнюю границу возраста.")
-        partner_age_to = input_age(user_data)
+        if partner_age_from:
+            write_msg(user_data['user_id'], "Введите верхнюю границу возраста.")
+            partner_age_to = input_age(user_data)
 
     if partner_age_from and partner_age_to:
         if partner_age_from <= partner_age_to:
@@ -104,7 +105,7 @@ def organize_search(user_data, vk_object, keyboard=None):
             if user_data['city_id']:
                 partner_list = vk_object.get_partner_list(user_data['user_id'], partner_age_from, partner_age_to, user_data['city_id'])
             else:
-                partner_list = vk_object.get_partner_list(partner_sex, partner_age_from, partner_age_to)
+                partner_list = vk_object.get_partner_list(user_data['user_id'], partner_age_from, partner_age_to)
             show_partners(user_data, vk_object, partner_list, keyboard, 'search')
             return partner_list
         else:
@@ -161,11 +162,13 @@ if __name__ == '__main__':
                     write_msg(event.user_id, text_message_mainmenu, keyboard)
                 elif request == "Начать поиск":
                     partner_list = organize_search(user_data, vk_object, keyboard_search)
+                    write_msg(event.user_id, text_message_mainmenu, keyboard)
                 elif request == "Избранные":
                     write_msg(event.user_id, "Показываю избранных...")
                     favorite_list = db.get_favorite_list(user_data)
                     if favorite_list:
                         show_partners(user_data, vk_object, favorite_list, keyboard_list, 'favorite')
+                        write_msg(event.user_id, text_message_mainmenu, keyboard)
                     else:
                         write_msg(event.user_id, f"В списке никого нет", keyboard)
                 elif request == "Чёрный список":
@@ -173,7 +176,8 @@ if __name__ == '__main__':
                     black_list = db.get_black_list(user_data)
                     if black_list:
                         show_partners(user_data, vk_object, black_list, keyboard_list, 'black')
+                        write_msg(event.user_id, text_message_mainmenu, keyboard)
                     else:
                         write_msg(event.user_id, f"В списке никого нет", keyboard)
                 else:
-                    write_msg(event.user_id, "Не понял вашего ответа. Напишите: \n Начать поиск \n Избранные \n Чёрный список", keyboard)
+                    write_msg(event.user_id, f"Не понял вашего ответа. \n {text_message_mainmenu}", keyboard)
