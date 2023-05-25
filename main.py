@@ -2,7 +2,7 @@ from random import randrange
 import vk_api
 
 from vk_api.longpoll import VkLongPoll, VkEventType
-
+  
 from Database.db_manager import DBManager
 from VKManager.VKManager import VKManager
 from Settings.vk_config import TOKEN_VK_GROUP
