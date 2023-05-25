@@ -1,14 +1,18 @@
 import vk_api
+from pprint import pprint
 from datetime import date
-from vk_config import TOKEN_VK_USER
+from vk_config import TOKEN_VK_USER, TOKEN_VK_GROUP
+
 
 class VKManager:
     def __init__(self):
+        self.session_group = vk_api.VkApi(token=TOKEN_VK_GROUP)
         self.session_user = vk_api.VkApi(token=TOKEN_VK_USER)
 
     # Получаем данные пользователя
     def get_user_data(self, user_id):
         user_data = {}
+        link_url = 'https://vk.com/id'
         user_get = self.session_user.method('users.get', {'user_ids': user_id, 'fields': 'city, bdate, sex'})[0]
         current_date = int(date.today().strftime("%d.%m.%Y").split('.')[2])
         if user_get.get('bdate'):
@@ -24,6 +28,7 @@ class VKManager:
         if user_get.get('city'):
             user_data['city'] = str(user_get['city']['title'])
             user_data['city_id'] = user_get['city']['id']
+        user_data['profile_link'] = str(link_url + str(user_get['id']))
         return user_data
 
     # Получаем данные партнера по параметрам
@@ -110,3 +115,16 @@ class VKManager:
                                                }
                                               )
         return get_photos
+
+
+if __name__ == '__main__':
+    vk = VKManager()
+    # pprint(vk.get_photos_id(42203928))
+    # pprint(len(vk.name(1,20,21,"Хабаровск")))
+    pprint(len(vk.get_partner_list(42203928,20,21,153)))
+    # vk.likes_photo(42203928, 456239035)
+    #
+    # gg = vk.get_partner_list(1, 20, 21, "Хабаровск")
+    # for i in gg:
+    #     lists = i['user_id']
+    #     pprint(vk.get_photos_id(lists))
