@@ -1,7 +1,7 @@
 import vk_api
+from pprint import pprint
 from datetime import date
 from Settings.vk_config import TOKEN_VK_USER
-
 
 class VKManager:
     def __init__(self):
@@ -10,6 +10,7 @@ class VKManager:
     # Получаем данные пользователя
     def get_user_data(self, user_id):
         user_data = {}
+        link_url = 'https://vk.com/id'
         user_get = self.session_user.method('users.get', {'user_ids': user_id, 'fields': 'city, bdate, sex'})[0]
         current_date = int(date.today().strftime("%d.%m.%Y").split('.')[2])
         if user_get.get('bdate'):
@@ -25,6 +26,7 @@ class VKManager:
         if user_get.get('city'):
             user_data['city'] = str(user_get['city']['title'])
             user_data['city_id'] = user_get['city']['id']
+        user_data['profile_link'] = str(link_url + str(user_get['id']))
         return user_data
 
     # Получаем данные партнера по параметрам

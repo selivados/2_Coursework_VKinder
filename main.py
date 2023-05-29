@@ -1,14 +1,14 @@
 from random import randrange
 import vk_api
-import json
 
 from vk_api.longpoll import VkLongPoll, VkEventType
-
+  
 from Database.db_manager import DBManager
 from VKManager.VKManager import VKManager
 from Settings.vk_config import TOKEN_VK_GROUP
 
 text_message_mainmenu = 'Напишите: \n Начать поиск \n Избранные \n Чёрный список'
+
 
 def write_msg(user_id, message, vk_keyboard=None, attachment=None):
     vk_group.method('messages.send', {'user_id': user_id,
@@ -21,16 +21,19 @@ def write_msg(user_id, message, vk_keyboard=None, attachment=None):
 def show_partners(user_data, vk_object, partners_data_list, keyboard, show_type):
     cursor = 0
     db = DBManager()
-    cursor = select_show_partner(user_data['user_id'], vk_object, partners_data_list, db, cursor-1, 1, keyboard, show_type)
+    cursor = select_show_partner(user_data['user_id'], vk_object, partners_data_list,
+                                 db, cursor-1, 1, keyboard, show_type)
 
     for event in longpoll_group.listen():
         if event.type == VkEventType.MESSAGE_NEW:
             if event.to_me:
                 request = event.text
                 if request == "След":
-                    cursor = select_show_partner(user_data['user_id'], vk_object, partners_data_list, db, cursor, 1, keyboard, show_type)
+                    cursor = select_show_partner(user_data['user_id'], vk_object, partners_data_list, db, cursor, 1,
+                                                 keyboard, show_type)
                 elif request == "Пред":
-                    cursor = select_show_partner(user_data['user_id'], vk_object, partners_data_list, db, cursor, -1, keyboard, show_type)
+                    cursor = select_show_partner(user_data['user_id'], vk_object, partners_data_list, db, cursor, -1,
+                                                 keyboard, show_type)
                 elif (request == "Добавить в избранное") and (show_type == 'search'):
                     db.add_to_favorite_list(user_data, partners_data_list[cursor])
                     write_msg(user_data['user_id'], f"Партнёр добавлен в cписок избранных", keyboard)
@@ -56,7 +59,8 @@ def select_show_partner(user_id, vk_object, partners_data_list, db, cursor, inc,
     cursor += inc
     while not f:
         if (cursor < len(partners_data_list)) and (cursor >= 0):
-            if (not db.find_in_black_list(user_data, partners_data_list[cursor])) or ((show_type=='black') or (show_type=='favorite')):
+            if (not db.find_in_black_list(user_data, partners_data_list[cursor])) or \
+                    ((show_type == 'black') or (show_type == 'favorite')):
                 show_one_partner(user_id, vk_object, partners_data_list[cursor], keyboard)
                 f = True
             else:
@@ -73,14 +77,14 @@ def select_show_partner(user_id, vk_object, partners_data_list, db, cursor, inc,
     return cursor
 
 
-
 def show_one_partner(user_id, vk_object, partner, keyboard):
-    photo_list=[]
+    photo_list = []
     lens = len(partner['photo_ids'])
     for i in range(0, lens):
-        photo_list.append('photo'  + str(partner['user_id']) + '_' + str(partner['photo_ids'][i]))
+        photo_list.append('photo' + str(partner['user_id']) + '_' + str(partner['photo_ids'][i]))
     photo_links = ','.join(photo_list)
-    message = f"{partner['first_name']} {partner['last_name']} \n Возраст: {partner['age']} \n Город: {partner['city']} \n http://vk.com/id{partner['user_id']}"
+    message = f"{partner['first_name']} {partner['last_name']} \n Возраст: {partner['age']} " \
+              f"\n Город: {partner['city']} \n http://vk.com/id{partner['user_id']}"
     partner_photos = vk_object.get_photos_id(partner['user_id'])
     write_msg(user_id, message, keyboard,  photo_links)
 
@@ -103,7 +107,8 @@ def organize_search(user_data, vk_object, keyboard=None):
         if partner_age_from <= partner_age_to:
             write_msg(event.user_id, "Идёт поиск...")
             if user_data['city_id']:
-                partner_list = vk_object.get_partner_list(user_data['user_id'], partner_age_from, partner_age_to, user_data['city_id'])
+                partner_list = vk_object.get_partner_list(user_data['user_id'], partner_age_from, partner_age_to,
+                                                          user_data['city_id'])
             else:
                 partner_list = vk_object.get_partner_list(user_data['user_id'], partner_age_from, partner_age_to)
             show_partners(user_data, vk_object, partner_list, keyboard, 'search')
@@ -126,9 +131,11 @@ def input_age(user_data):
                         write_msg(user_data['user_id'], text_message_mainmenu, keyboard)
                         break
                     else:
-                        write_msg(user_data['user_id'], "Граница введена неверно. Повторите или нажмите q для выхода", keyboard)
+                        write_msg(user_data['user_id'],
+                                  "Граница введена неверно. Повторите или нажмите q для выхода", keyboard)
                 else:
-                    write_msg(user_data['user_id'], "Граница введена неверно. Повторите или нажмите q для выхода",keyboard)
+                    write_msg(user_data['user_id'],
+                              "Граница введена неверно. Повторите или нажмите q для выхода", keyboard)
     return partner_age
 
 
@@ -142,7 +149,6 @@ if __name__ == '__main__':
 
     with open('keyboard/keyboard_list.json', 'r', encoding='UTF-8') as f:
         keyboard_list = f.read()
-
 
     vk_group = vk_api.VkApi(token=TOKEN_VK_GROUP)
     longpoll_group = VkLongPoll(vk_group)
@@ -180,4 +186,4 @@ if __name__ == '__main__':
                     else:
                         write_msg(event.user_id, f"В списке никого нет", keyboard)
                 else:
-                    write_msg(event.user_id, f"Не понял вашего ответа. \n {text_message_mainmenu}", keyboard)
+                    write_msg(event.user_id, f"Не понял вашего ответа", keyboard)
