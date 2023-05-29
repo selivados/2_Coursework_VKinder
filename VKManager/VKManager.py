@@ -1,7 +1,7 @@
 import vk_api
-from pprint import pprint
 from datetime import date
 from Settings.vk_config import TOKEN_VK_USER
+
 
 class VKManager:
     def __init__(self):
@@ -53,7 +53,7 @@ class VKManager:
                                                     }
                                                    )
         for partner_data in search_partners['items']:
-            if partner_data['is_closed'] == False:
+            if partner_data['is_closed'] is False:
                 dict_persons = {}
                 if 'city' not in partner_data:
                     continue
@@ -67,7 +67,7 @@ class VKManager:
                 birh_date = int(partner_data['bdate'].split('.')[2])
                 age = current_date - birh_date
                 dict_persons['photo_ids'] = self.get_photos_id(partner_data['id'])
-                if dict_persons['photo_ids'] == None:
+                if dict_persons['photo_ids'] is None:
                     del dict_persons
                 else:
                     dict_persons['user_id'] = int(partner_data['id'])
@@ -94,15 +94,16 @@ class VKManager:
     def list_sorted_photos(self, get_photos):
         photo_list = []
         for item in get_photos['items']:
-            count_likes = {}
+            count_likes = dict()
             count_likes['photo_id'] = str(item["id"])
             count_likes['likes'] = item['likes']['count']
             photo_list.append(count_likes)
 
-        sorted_photos_count_likes = sorted(photo_list, key=lambda item: item['likes'], reverse=True)[0:3]
+        sorted_photos_count_likes = sorted(photo_list, key=lambda items: items['likes'], reverse=True)[0:3]
         return self.partner_photos_list(sorted_photos_count_likes)
 
-    def partner_photos_list(self, sorted_photos_count_likes):
+    @staticmethod
+    def partner_photos_list(sorted_photos_count_likes):
         photo_id = []
         for lists_photos in sorted_photos_count_likes:
             photo_id.append(lists_photos['photo_id'])
@@ -117,3 +118,4 @@ class VKManager:
                                                }
                                               )
         return get_photos
+    
