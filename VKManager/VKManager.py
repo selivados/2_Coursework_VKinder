@@ -1,7 +1,7 @@
 import vk_api
-from pprint import pprint
 from datetime import date
 from Settings.vk_config import TOKEN_VK_USER
+
 
 class VKManager:
     def __init__(self):
@@ -118,3 +118,4 @@ class VKManager:
                                                }
                                               )
         return get_photos
+    
