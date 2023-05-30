@@ -95,7 +95,7 @@ def organize_search(user_data, vk_object, keyboard=None):
         partner_age_to = user_data['age'] + 5
     else:
         write_msg(user_data['user_id'], "Введите нижнюю границу возраста.")
-        partner_age_from = 0
+
         partner_age_to = 0
 
         partner_age_from = input_age(user_data)
@@ -128,15 +128,15 @@ def input_age(user_data):
                     if int(request) in range(14, 99):
                         partner_age = request
                         break
-                    elif (request == "q") or (request == "й"):
-                        write_msg(user_data['user_id'], text_message_mainmenu, keyboard)
-                        break
                     else:
                         write_msg(user_data['user_id'],
-                                  "Граница введена неверно. Повторите или нажмите q для выхода", keyboard)
+                                  "Граница введена неверно. Повторите или нажмите q для выхода")
+                elif (request == "q") or (request == "й"):
+                    write_msg(user_data['user_id'], text_message_mainmenu, keyboard)
+                    return 0
                 else:
                     write_msg(user_data['user_id'],
-                              "Граница введена неверно. Повторите или нажмите q для выхода", keyboard)
+                              "Граница введена неверно. Повторите или нажмите q для выхода")
     return partner_age
 
 
