@@ -36,7 +36,7 @@ class VKManager:
             return user_data
         return False
 
-    def get_partner_list(self, user_sex, age_from, age_to, city_id, count=500):
+    def get_partner_list(self, user_sex, age_from, age_to, city_id=None, count=100):
         partner_sex = 1 if user_sex == 2 else 2
         response = self.session_user.method('users.search', {
             'count': count,

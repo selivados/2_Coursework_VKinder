@@ -1,4 +1,4 @@
-{  
+{
    "one_time":true,
    "buttons":[  
       [  
@@ -16,7 +16,7 @@
                "payload":"{\"button\": \"2\"}",
                "label":"Избранные"
             },
-            "color":"primary"
+            "color":"positive"
          },
          {  
             "action":{  
@@ -24,7 +24,7 @@
                "payload":"{\"button\": \"3\"}",
                "label":"Чёрный список"
             },
-            "color":"secondary"
+            "color":"negative"
          }
       ]
    ]

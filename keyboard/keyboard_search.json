@@ -26,7 +26,7 @@
                "payload":"{\"button\": \"2\"}",
                "label":"Добавить в избранное"
             },
-            "color":"primary"
+            "color":"positive"
          },
          {  
             "action":{  
@@ -34,7 +34,7 @@
                "payload":"{\"button\": \"3\"}",
                "label":"Добавить в чёрный список"
             },
-            "color":"secondary"
+            "color":"negative"
          }
       ],
       [
