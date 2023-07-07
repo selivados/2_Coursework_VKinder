@@ -1,5 +1,7 @@
-import vk_api
 from datetime import date
+
+import vk_api
+
 from Settings.vk_config import TOKEN_VK_USER
 
 
@@ -8,10 +10,9 @@ class VKManager:
         self.session_user = vk_api.VkApi(token=TOKEN_VK_USER)
 
     def get_user_data(self, user_id):
-        response = self.session_user.method(
-            'users.get', {
-                'user_ids': user_id,
-                'fields': 'city, bdate, sex'
+        response = self.session_user.method('users.get', {
+            'user_ids': user_id,
+            'fields': 'sex, bdate, city'
             }
         )
         if response:
@@ -37,15 +38,14 @@ class VKManager:
 
     def get_partner_list(self, user_sex, age_from, age_to, city_id, count=500):
         partner_sex = 1 if user_sex == 2 else 2
-        response = self.session_user.method(
-            'users.search', {
-                'count': count,
-                'sex': partner_sex,
-                'age_from': age_from,
-                'age_to': age_to,
-                'city_id': city_id,
-                'has_photo': 1,
-                'fields': 'sex, bdate, city'
+        response = self.session_user.method('users.search', {
+            'count': count,
+            'sex': partner_sex,
+            'age_from': age_from,
+            'age_to': age_to,
+            'city_id': city_id,
+            'has_photo': 1,
+            'fields': 'sex, bdate, city'
             }
         )
         partner_list = []
@@ -79,12 +79,11 @@ class VKManager:
         return partner_list
 
     def get_most_popular_photos_by_user_id(self, user_id, count=3):
-        response = self.session_user.method(
-            'photos.get', {
-                'owner_id': user_id,
-                'album_id': 'profile',
-                'extended': 1,
-                'photo_sizes': 1
+        response = self.session_user.method('photos.get', {
+            'owner_id': user_id,
+            'album_id': 'profile',
+            'extended': 1,
+            'photo_sizes': 1
             }
         )
         if response:
