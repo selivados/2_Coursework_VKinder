@@ -16,7 +16,7 @@
                "payload":"{\"button\": \"2\"}",
                "label":"Убрать из списка"
             },
-            "color":"primary"
+            "color":"negative"
          },
          {  
             "action":{  

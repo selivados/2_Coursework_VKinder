@@ -14,68 +14,46 @@ class DBManager:
         self.cursor.close()
         self.connect.close()
 
-    def _check_db_exists(self) -> bool:
+    def create_tables(self):
         """
-        Проверяет есть ли таблицы в базе данных.
-        Если таблицы уже существуют, возвращает True, если нет - False.
+        Creates tables in the database.
+        If the tables already exist, then does nothing.
         """
         self._create_db_connection()
-        try:
-            self.cursor.execute(
-                """
-                SELECT COUNT(*)
-                  FROM users;
-                """,
-            )
-            self._close_db_connection()
-            return True
-        except psycopg2.Error:
-            self._close_db_connection()
-            return False
+        self.cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS users (
+                user_id    INTEGER     PRIMARY KEY,
+                first_name VARCHAR(40) NOT NULL,
+                last_name  VARCHAR(40) NOT NULL,
+                sex        INTEGER     NOT NULL,
+                age        INTEGER     NOT NULL,
+                city       VARCHAR(60) NOT NULL
+            );
 
-    def create_db(self) -> bool:
+            CREATE TABLE IF NOT EXISTS photos (
+                user_id   INTEGER PRIMARY KEY REFERENCES users (user_id),
+                photo_ids TEXT    UNIQUE NOT NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS favorite_list (
+                PRIMARY KEY (user_id, partner_id),
+                user_id    INTEGER REFERENCES users (user_id),
+                partner_id INTEGER REFERENCES users (user_id)
+            );
+
+            CREATE TABLE IF NOT EXISTS black_list (
+                PRIMARY KEY (user_id, partner_id),
+                user_id    INTEGER REFERENCES users (user_id),
+                partner_id INTEGER REFERENCES users (user_id)
+            );
+            """
+        )
+        self._close_db_connection()
+
+    def _delete_tables(self):
         """
-        Создаёт таблицы в базе данных.
-        Если таблицы уже существуют, то ничего не делает.
-        """
-        db_exists = self._check_db_exists()
-        if not db_exists:
-            self._create_db_connection()
-            self.cursor.execute(
-                """
-                CREATE TABLE IF NOT EXISTS users (
-                    user_id    INTEGER     PRIMARY KEY,
-                    first_name VARCHAR(40) NOT NULL,
-                    last_name  VARCHAR(40) NOT NULL,
-                    sex        INTEGER     NOT NULL,
-                    age        INTEGER     NOT NULL,
-                    city       VARCHAR(60) NOT NULL
-                );
-
-                CREATE TABLE IF NOT EXISTS photos (
-                    user_id   INTEGER PRIMARY KEY REFERENCES users (user_id),
-                    photo_ids TEXT    UNIQUE NOT NULL
-                );
-
-                CREATE TABLE IF NOT EXISTS favorite_list (
-                    PRIMARY KEY (user_id, partner_id),
-                    user_id    INTEGER REFERENCES users (user_id),
-                    partner_id INTEGER REFERENCES users (user_id)
-                );
-
-                CREATE TABLE IF NOT EXISTS black_list (
-                    PRIMARY KEY (user_id, partner_id),
-                    user_id    INTEGER REFERENCES users (user_id),
-                    partner_id INTEGER REFERENCES users (user_id)
-                );
-                """
-            )
-            self._close_db_connection()
-        return True
-
-    def _delete_db(self) -> bool:
-        """
-        Удаляет таблицы из базы данных.
+        Removes tables from the database.
         """
         self._create_db_connection()
         self.cursor.execute(
@@ -87,11 +65,10 @@ class DBManager:
             """
         )
         self._close_db_connection()
-        return True
 
-    def _add_data_in_users(self, user_data: dict) -> bool:
+    def _add_data_in_users(self, user_data: dict):
         """
-        Добавляет данные о пользователе ВКонтакте в таблицу users.
+        Adds data about the VKontakte user to the users table.
         """
         self._create_db_connection()
         self.cursor.execute(
@@ -108,11 +85,10 @@ class DBManager:
             )
         )
         self._close_db_connection()
-        return True
 
-    def _update_data_in_users(self, user_data: dict) -> bool:
+    def _update_data_in_users(self, user_data: dict):
         """
-        Обновляет данные о пользователе ВКонтакте в таблице users.
+        Updates data about the VKontakte user in the users table.
         """
         self._create_db_connection()
         self.cursor.execute(
@@ -134,26 +110,10 @@ class DBManager:
             )
         )
         self._close_db_connection()
-        return True
-
-    def _delete_data_in_users(self, user_data: dict) -> bool:
-        """
-        Удаляет данные о пользователе ВКонтакте в таблице users.
-        """
-        self._create_db_connection()
-        self.cursor.execute(
-            """
-            DELETE FROM users
-             WHERE user_id = %s;
-            """,
-            (user_data['user_id'],)
-        )
-        self._close_db_connection()
-        return True
 
     def _find_in_users(self, user_data: dict) -> int:
         """
-        Ищет записи о пользователе ВКонтакте в таблице users.
+        Looks for records about the VKontakte user in the users table.
         """
         self._create_db_connection()
         self.cursor.execute(
@@ -168,9 +128,9 @@ class DBManager:
         self._close_db_connection()
         return result
 
-    def _add_data_in_photos(self, user_data: dict) -> bool:
+    def _add_data_in_photos(self, user_data: dict):
         """
-        Добавляет данные о фотографиях пользователя ВКонтакте в таблицу photos.
+        Adds data about photos of the VKontakte user to the photos table.
         """
         self._create_db_connection()
         self.cursor.execute(
@@ -183,11 +143,10 @@ class DBManager:
             )
         )
         self._close_db_connection()
-        return True
 
-    def _update_data_in_photos(self, user_data: dict) -> bool:
+    def _update_data_in_photos(self, user_data: dict):
         """
-        Обновляет данные о фотографиях пользователя ВКонтакте в таблице photos.
+        Updates data about photos of the VKontakte user in the photos table.
         """
         self._create_db_connection()
         self.cursor.execute(
@@ -201,26 +160,10 @@ class DBManager:
             )
         )
         self._close_db_connection()
-        return True
 
-    def _delete_data_in_photos(self, user_data: dict) -> bool:
+    def _add_data_in_favorite_list(self, user_data: dict, partner_data: dict):
         """
-        Удаляет данные о фотографиях пользователя ВКонтакте в таблице photos.
-        """
-        self._create_db_connection()
-        self.cursor.execute(
-            """
-            DELETE FROM photos
-             WHERE user_id = %s;
-            """,
-            (user_data['user_id'],)
-        )
-        self._close_db_connection()
-        return True
-
-    def _add_data_in_favorite_list(self, user_data: dict, partner_data: dict) -> bool:
-        """
-        Добавляет данные в таблицу favorite_list.
+        Adds data to the favorite_list table.
         """
         self._create_db_connection()
         self.cursor.execute(
@@ -233,11 +176,10 @@ class DBManager:
             )
         )
         self._close_db_connection()
-        return True
 
-    def _delete_data_in_favorite_list(self, user_data: dict, partner_data: dict) -> bool:
+    def _delete_data_in_favorite_list(self, user_data: dict, partner_data: dict):
         """
-        Удаляет данные из таблицы favorite_list.
+        Removes data from the favorite_list table.
         """
         self._create_db_connection()
         self.cursor.execute(
@@ -251,11 +193,27 @@ class DBManager:
             )
         )
         self._close_db_connection()
-        return True
+
+    def _add_or_update_data_in_users_and_photos(self, user_data: dict, partner_data: dict):
+        """
+        Adds or updates data in the users and photos tables.
+        """
+        found_user = self._find_in_users(user_data)
+        found_partner = self._find_in_users(partner_data)
+        if found_user:
+            self._update_data_in_users(user_data)
+        else:
+            self._add_data_in_users(user_data)
+        if found_partner:
+            self._update_data_in_users(partner_data)
+            self._update_data_in_photos(partner_data)
+        else:
+            self._add_data_in_users(partner_data)
+            self._add_data_in_photos(partner_data)
 
     def find_in_favorite_list(self, user_data: dict, partner_data: dict) -> int:
         """
-        Ищет партнёра в списке избранных пользователя VKinder.
+        Looking for a partner in the favorite list of the VKinder user.
         """
         self._create_db_connection()
         self.cursor.execute(
@@ -275,41 +233,18 @@ class DBManager:
 
     def add_to_favorite_list(self, user_data: dict, partner_data: dict) -> bool:
         """
-        Добавляет партнёра в список избранных пользователя VKinder.
+        Adds a partner to the favorite list of the VKinder user.
         """
         found_partner_in_fl = self.find_in_favorite_list(user_data, partner_data)
-        if not found_partner_in_fl:
-            found_user = self._find_in_users(user_data)
-            found_partner = self._find_in_users(partner_data)
-            if not found_user and not found_partner:
-                self._add_data_in_users(user_data)
-                self._add_data_in_users(partner_data)
-                self._add_data_in_photos(partner_data)
-                self._add_data_in_favorite_list(user_data, partner_data)
-                return True
-            if found_user and not found_partner:
-                self._update_data_in_users(user_data)
-                self._add_data_in_users(partner_data)
-                self._add_data_in_photos(partner_data)
-                self._add_data_in_favorite_list(user_data, partner_data)
-                return True
-            if not found_user and found_partner:
-                self._add_data_in_users(user_data)
-                self._update_data_in_users(partner_data)
-                self._update_data_in_photos(partner_data)
-                self._add_data_in_favorite_list(user_data, partner_data)
-                return True
-            if found_user and found_partner:
-                self._update_data_in_users(user_data)
-                self._update_data_in_users(partner_data)
-                self._update_data_in_photos(partner_data)
-                self._add_data_in_favorite_list(user_data, partner_data)
-                return True
-        return False
+        if found_partner_in_fl:
+            return False
+        self._add_or_update_data_in_users_and_photos(user_data, partner_data)
+        self._add_data_in_favorite_list(user_data, partner_data)
+        return True
 
     def delete_from_favorite_list(self, user_data: dict, partner_data: dict) -> bool:
         """
-        Удаляет партнёра из списка избранных пользователя VKinder.
+        Removes a partner from the favorite list of the VKinder user.
         """
         found_partner_in_fl = self.find_in_favorite_list(user_data, partner_data)
         if found_partner_in_fl:
@@ -319,7 +254,7 @@ class DBManager:
 
     def get_favorite_list(self, user_data: dict) -> list:
         """
-        Получает список с данными о партнёрах, добавленных пользователем VKinder в список избранных.
+        Gets a list with data about partners added by the VKinder user to the favorite list.
         """
         self._create_db_connection()
         self.cursor.execute(
@@ -349,9 +284,9 @@ class DBManager:
             favorite_list.append(partner_data)
         return favorite_list
 
-    def _add_data_in_black_list(self, user_data: dict, partner_data: dict) -> bool:
+    def _add_data_in_black_list(self, user_data: dict, partner_data: dict):
         """
-        Добавляет данные в таблицу black_list.
+        Adds data to the black_list table.
         """
         self._create_db_connection()
         self.cursor.execute(
@@ -364,11 +299,10 @@ class DBManager:
             )
         )
         self._close_db_connection()
-        return True
 
-    def _delete_data_in_black_list(self, user_data: dict, partner_data: dict) -> bool:
+    def _delete_data_in_black_list(self, user_data: dict, partner_data: dict):
         """
-        Удаляет данные из таблицы black_list.
+        Removes data from the black_list table.
         """
         self._create_db_connection()
         self.cursor.execute(
@@ -382,11 +316,10 @@ class DBManager:
             )
         )
         self._close_db_connection()
-        return True
 
     def find_in_black_list(self, user_data: dict, partner_data: dict) -> int:
         """
-        Ищет партнёра в чёрном списке пользователя VKinder.
+        Looking for a partner in the black list of the VKinder user.
         """
         self._create_db_connection()
         self.cursor.execute(
@@ -406,41 +339,18 @@ class DBManager:
 
     def add_to_black_list(self, user_data: dict, partner_data: dict) -> bool:
         """
-        Добавляет партнёра в чёрный список пользователя VKinder.
+        Adds a partner to the black list of the VKinder user.
         """
         found_partner_in_bl = self.find_in_black_list(user_data, partner_data)
-        if not found_partner_in_bl:
-            found_user = self._find_in_users(user_data)
-            found_partner = self._find_in_users(partner_data)
-            if not found_user and not found_partner:
-                self._add_data_in_users(user_data)
-                self._add_data_in_users(partner_data)
-                self._add_data_in_photos(partner_data)
-                self._add_data_in_black_list(user_data, partner_data)
-                return True
-            if found_user and not found_partner:
-                self._update_data_in_users(user_data)
-                self._add_data_in_users(partner_data)
-                self._add_data_in_photos(partner_data)
-                self._add_data_in_black_list(user_data, partner_data)
-                return True
-            if not found_user and found_partner:
-                self._add_data_in_users(user_data)
-                self._update_data_in_users(partner_data)
-                self._update_data_in_photos(partner_data)
-                self._add_data_in_black_list(user_data, partner_data)
-                return True
-            if found_user and found_partner:
-                self._update_data_in_users(user_data)
-                self._update_data_in_users(partner_data)
-                self._update_data_in_photos(partner_data)
-                self._add_data_in_black_list(user_data, partner_data)
-                return True
-        return False
+        if found_partner_in_bl:
+            return False
+        self._add_or_update_data_in_users_and_photos(user_data, partner_data)
+        self._add_data_in_black_list(user_data, partner_data)
+        return True
 
     def delete_from_black_list(self, user_data: dict, partner_data: dict) -> bool:
         """
-        Удаляет партнёра из чёрного списка пользователя VKinder.
+        Removes a partner from the black list of the VKinder user.
         """
         found_partner_in_bl = self.find_in_black_list(user_data, partner_data)
         if found_partner_in_bl:
@@ -450,7 +360,7 @@ class DBManager:
 
     def get_black_list(self, user_data: dict) -> list:
         """
-        Получает список с данными о партнёрах, добавленных пользователем VKinder в чёрный список.
+        Gets a list with data about partners added by the VKinder user to the black list.
         """
         self._create_db_connection()
         self.cursor.execute(
@@ -479,3 +389,7 @@ class DBManager:
             }
             black_list.append(partner_data)
         return black_list
+
+if __name__ == '__main__':
+    db = DBManager()
+    db._delete_tables()
