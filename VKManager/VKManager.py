@@ -50,15 +50,13 @@ class VKManager:
         )
         partner_list = []
         for item in response['items']:
-            if item['is_closed']:
-                continue
-            if 'city' not in item:
-                continue
-            if item['city']['id'] != city_id:
-                continue
-            if 'bdate' not in item:
-                continue
-            if len(item['bdate'].split('.')) < 3:
+            if (
+                item['is_closed'] or
+                'city' not in item or
+                item['city']['id'] != city_id or
+                'bdate' not in item or
+                len(item['bdate'].split('.')) < 3
+            ):
                 continue
             photo_ids_list = self.get_most_popular_photos_by_user_id(item['id'])
             if not photo_ids_list:

@@ -111,7 +111,7 @@ class DBManager:
         )
         self._close_db_connection()
 
-    def _find_in_users(self, user_data: dict) -> bool:
+    def _find_in_users(self, user_data: dict) -> int:
         """
         Looks for records about the VKontakte user in the users table.
         """
@@ -194,7 +194,24 @@ class DBManager:
         )
         self._close_db_connection()
 
-    def find_in_favorite_list(self, user_data: dict, partner_data: dict) -> bool:
+    def _add_or_update_data_in_users_and_photos(self, user_data: dict, partner_data: dict):
+        """
+        Adds or updates data in the users and photos tables.
+        """
+        found_user = self._find_in_users(user_data)
+        found_partner = self._find_in_users(partner_data)
+        if found_user:
+            self._update_data_in_users(user_data)
+        else:
+            self._add_data_in_users(user_data)
+        if found_partner:
+            self._update_data_in_users(partner_data)
+            self._update_data_in_photos(partner_data)
+        else:
+            self._add_data_in_users(partner_data)
+            self._add_data_in_photos(partner_data)
+
+    def find_in_favorite_list(self, user_data: dict, partner_data: dict) -> int:
         """
         Looking for a partner in the favorite list of the VKinder user.
         """
@@ -221,18 +238,7 @@ class DBManager:
         found_partner_in_fl = self.find_in_favorite_list(user_data, partner_data)
         if found_partner_in_fl:
             return False
-        found_user = self._find_in_users(user_data)
-        found_partner = self._find_in_users(partner_data)
-        if found_user:
-            self._update_data_in_users(user_data)
-        else:
-            self._add_data_in_users(user_data)
-        if found_partner:
-            self._update_data_in_users(partner_data)
-            self._update_data_in_photos(partner_data)
-        else:
-            self._add_data_in_users(partner_data)
-            self._add_data_in_photos(partner_data)
+        self._add_or_update_data_in_users_and_photos(user_data, partner_data)
         self._add_data_in_favorite_list(user_data, partner_data)
         return True
 
@@ -311,7 +317,7 @@ class DBManager:
         )
         self._close_db_connection()
 
-    def find_in_black_list(self, user_data: dict, partner_data: dict) -> bool:
+    def find_in_black_list(self, user_data: dict, partner_data: dict) -> int:
         """
         Looking for a partner in the black list of the VKinder user.
         """
@@ -338,18 +344,7 @@ class DBManager:
         found_partner_in_bl = self.find_in_black_list(user_data, partner_data)
         if found_partner_in_bl:
             return False
-        found_user = self._find_in_users(user_data)
-        found_partner = self._find_in_users(partner_data)
-        if found_user:
-            self._update_data_in_users(user_data)
-        else:
-            self._add_data_in_users(user_data)
-        if found_partner:
-            self._update_data_in_users(partner_data)
-            self._update_data_in_photos(partner_data)
-        else:
-            self._add_data_in_users(partner_data)
-            self._add_data_in_photos(partner_data)
+        self._add_or_update_data_in_users_and_photos(user_data, partner_data)
         self._add_data_in_black_list(user_data, partner_data)
         return True
 
@@ -394,3 +389,7 @@ class DBManager:
             }
             black_list.append(partner_data)
         return black_list
+
+if __name__ == '__main__':
+    db = DBManager()
+    db._delete_tables()
