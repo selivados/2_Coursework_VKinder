@@ -206,31 +206,6 @@ if __name__ == '__main__':
 
             elif (
                 session['menu_state'] == 'main' and
-                message == 'Список избранных'
-            ):
-                session['favorite_partners'] = db.get_favorite_partners(
-                    session['user_data']
-                )
-                if session['favorite_partners']:
-                    session['menu_state'] = 'favorites'
-                    session['cursor'] = select_partner(
-                        user_data=session['user_data'],
-                        partner_list=session['favorite_partners'],
-                        database=db,
-                        cursor=session['cursor'] - 1,
-                        increment=1,
-                        keyboard=keyboard_favorites,
-                        menu_state=session['menu_state']
-                    )
-                else:
-                    send_message(
-                        user_id,
-                        'В списке избранных никого нет.',
-                        keyboard_main
-                    )
-
-            elif (
-                session['menu_state'] == 'main' and
                 message == 'Чёрный список'
             ):
                 session['blocked_partners'] = db.get_blocked_partners(
@@ -251,6 +226,31 @@ if __name__ == '__main__':
                     send_message(
                         user_id,
                         'В чёрном списке никого нет.',
+                        keyboard_main
+                    )
+
+            elif (
+                session['menu_state'] == 'main' and
+                message == 'Список избранных'
+            ):
+                session['favorite_partners'] = db.get_favorite_partners(
+                    session['user_data']
+                )
+                if session['favorite_partners']:
+                    session['menu_state'] = 'favorites'
+                    session['cursor'] = select_partner(
+                        user_data=session['user_data'],
+                        partner_list=session['favorite_partners'],
+                        database=db,
+                        cursor=session['cursor'] - 1,
+                        increment=1,
+                        keyboard=keyboard_favorites,
+                        menu_state=session['menu_state']
+                    )
+                else:
+                    send_message(
+                        user_id,
+                        'В списке избранных никого нет.',
                         keyboard_main
                     )
 
@@ -326,6 +326,20 @@ if __name__ == '__main__':
 
             elif (
                 session['menu_state'] == 'favorites' and
+                message == 'Следующий >>'
+            ):
+                session['cursor'] = select_partner(
+                    user_data=session['user_data'],
+                    partner_list=session['favorite_partners'],
+                    database=db,
+                    cursor=session['cursor'],
+                    increment=1,
+                    keyboard=keyboard_favorites,
+                    menu_state=session['menu_state']
+                )
+
+            elif (
+                session['menu_state'] == 'favorites' and
                 message == 'Удалить из списка избранных'
             ):
                 partner_data = session['favorite_partners'][session['cursor']]
@@ -348,20 +362,6 @@ if __name__ == '__main__':
                     session['menu_state'] = 'main'
 
             elif (
-                session['menu_state'] == 'favorites' and
-                message == 'Следующий >>'
-            ):
-                session['cursor'] = select_partner(
-                    user_data=session['user_data'],
-                    partner_list=session['favorite_partners'],
-                    database=db,
-                    cursor=session['cursor'],
-                    increment=1,
-                    keyboard=keyboard_favorites,
-                    menu_state=session['menu_state']
-                )
-
-            elif (
                 session['menu_state'] == 'blocked' and
                 message == '<< Предыдущий'
             ):
@@ -371,6 +371,20 @@ if __name__ == '__main__':
                     database=db,
                     cursor=session['cursor'],
                     increment=-1,
+                    keyboard=keyboard_blocked,
+                    menu_state=session['menu_state']
+                )
+
+            elif (
+                session['menu_state'] == 'blocked' and
+                message == 'Следующий >>'
+            ):
+                session['cursor'] = select_partner(
+                    user_data=session['user_data'],
+                    partner_list=session['blocked_partners'],
+                    database=db,
+                    cursor=session['cursor'],
+                    increment=1,
                     keyboard=keyboard_blocked,
                     menu_state=session['menu_state']
                 )
@@ -397,20 +411,6 @@ if __name__ == '__main__':
                         keyboard_main
                     )
                     session['menu_state'] = 'main'
-
-            elif (
-                session['menu_state'] == 'blocked' and
-                message == 'Следующий >>'
-            ):
-                session['cursor'] = select_partner(
-                    user_data=session['user_data'],
-                    partner_list=session['blocked_partners'],
-                    database=db,
-                    cursor=session['cursor'],
-                    increment=1,
-                    keyboard=keyboard_blocked,
-                    menu_state=session['menu_state']
-                )
 
             elif (
                 session['menu_state'] in ['partners', 'favorites', 'blocked']

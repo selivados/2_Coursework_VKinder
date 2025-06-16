@@ -62,7 +62,6 @@ class VKManager:
             return []
         if not response['items']:
             return []
-        print(len(response['items']))
         partner_list = []
         for item in response['items']:
             if not (
