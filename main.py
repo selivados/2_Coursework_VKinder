@@ -1,283 +1,424 @@
-from random import randrange
+import os
 
 import vk_api
-from vk_api.longpoll import VkLongPoll, VkEventType
+from vk_api.bot_longpoll import VkBotLongPoll, VkBotEventType
+from vk_api.utils import get_random_id
+from dotenv import load_dotenv
 
 from Database.db_manager import DBManager
-from VKManager.VKManager import VKManager
-from Settings.vk_config import TOKEN_VK_GROUP
+from VKontakte.vk_manager import VKManager
+from VKontakte.vk_keyboards import (
+    keyboard_search,
+    keyboard_main,
+    keyboard_partners,
+    keyboard_favorites,
+    keyboard_blocked
+)
+
+load_dotenv()
 
 
-def write_msg(user_id, message, keyboard=None, attachment=None):
-    vk_group.method('messages.send', {
-        'user_id': user_id,
-        'message': message,
-        'random_id': randrange(10 ** 7),
-        'keyboard': keyboard,
-        'attachment': attachment
-        }
+def send_message(user_id, message, keyboard=None, attachment=None):
+    vk_group.messages.send(
+        user_id=user_id,
+        message=message,
+        random_id=get_random_id(),
+        keyboard=keyboard,
+        attachment=attachment
     )
 
 
-def select_partner(user_data, partner_data_list, db, cursor, increment, keyboard, show_type):
+def select_partner(
+    user_data, partner_list, database, cursor, increment, keyboard, menu_state
+):
     user_id = user_data['user_id']
-    end = False
     cursor += increment
-    while not end:
-        if 0 <= cursor < len(partner_data_list):
-            find_in_fl = db.find_in_favorite_list(user_data, partner_data_list[cursor])
-            find_in_bl = db.find_in_black_list(user_data, partner_data_list[cursor])
-            if (show_type not in ['favorite', 'black'] and not find_in_fl and not find_in_bl) or\
-                    (show_type in ['favorite', 'black'] and (find_in_fl or find_in_bl)):
-                show_partner_info(user_id, partner_data_list[cursor], keyboard)
-                end = True
-            else:
-                cursor += increment
-        else:
-            end = True
-            if cursor <= -1:
-                message = 'начала'
-                cursor = -1
-            else:
-                message = 'конца'
-                cursor = len(partner_data_list)
-            write_msg(user_id, f'Вы дошли до {message} списка, листайте в другую сторону.', keyboard)
+
+    while 0 <= cursor < len(partner_list):
+        partner_data = partner_list[cursor]
+        is_favorite = database.find_in_favorite_partners(
+            user_data, partner_data
+        )
+        is_blocked = database.find_in_blocked_partners(user_data, partner_data)
+
+        if (
+            menu_state not in ['favorites', 'blocked'] and
+            not is_favorite and not is_blocked
+        ) or (
+            menu_state == 'favorites' and is_favorite
+        ) or (
+            menu_state == 'blocked' and is_blocked
+        ):
+            show_partner_info(user_id, partner_data, keyboard)
+            return cursor
+
+        cursor += increment
+
+    if cursor < 0:
+        message = 'начала'
+        cursor = -1
+    else:
+        message = 'конца'
+        cursor = len(partner_list)
+
+    send_message(user_id, f'Вы дошли до {message} списка.', keyboard)
     return cursor
 
 
 def show_partner_info(user_id, partner_data, keyboard):
-    photo_list = [f"photo{str(partner_data['user_id'])}_{photo_id}" for photo_id in partner_data['photo_ids']]
+    photo_list = [
+        f"photo{partner_data['user_id']}_{photo_id}"
+        for photo_id in partner_data['photo_ids']
+    ]
     photo_links = ','.join(photo_list)
-    message = f"{partner_data['first_name']} {partner_data['last_name']}\n" \
-              f"Возраст: {partner_data['age']}\n" \
-              f"Город: {partner_data['city']}\n" \
-              f"https://vk.com/id{partner_data['user_id']}"
-    write_msg(user_id, message, keyboard, photo_links)
+    message = (f"{partner_data['first_name']} {partner_data['last_name']}\n"
+               f"Возраст: {partner_data['age']}\n"
+               f"Город: {partner_data['city']}\n"
+               f"https://vk.com/id{partner_data['user_id']}")
+    send_message(user_id, message, keyboard, photo_links)
+
+
+def validate_user_data(session, message):
+    user_data = session['user_data']
+    user_id = user_data['user_id']
+    menu_state = session['menu_state']
+
+    if 'age' not in user_data:
+        if menu_state != 'set_age':
+            send_message(user_id, 'Укажите свой возраст.')
+            session['menu_state'] = 'set_age'
+            return False
+        elif not (message.isdigit() and int(message) > 0):
+            send_message(user_id, 'Возраст указан неверно. Повторите ввод.')
+            return False
+        else:
+            user_data['age'] = int(message)
+
+    if not (session['partner_age_from'] and session['partner_age_to']):
+        session['partner_age_from'] = (
+            user_data['age'] - 5 if user_data['age'] > 5 else 1
+        )
+        session['partner_age_to'] = user_data['age'] + 5
+
+    if 'sex' not in user_data or user_data['sex'] == 0:
+        if menu_state != 'set_sex':
+            send_message(
+                user_id, 'Укажите свой пол (1 - женский, 2 - мужской).'
+            )
+            session['menu_state'] = 'set_sex'
+            return False
+        elif not (message.isdigit() and message in ('1', '2')):
+            send_message(user_id, 'Пол указан неверно. Повторите ввод.')
+            return False
+        else:
+            user_data['sex'] = int(message)
+
+    if 'city_id' not in user_data:
+        send_message(
+            user_id,
+            'Поскольку в Вашем профиле не указан город, по умолчанию будет '
+            'выбран город Москва для поиска партнёров.'
+        )
+        user_data['city_id'] = 1
+        user_data['city'] = 'Москва'
+
+    return True
 
 
 if __name__ == '__main__':
+    vk_session = vk_api.VkApi(token=os.getenv('VK_GROUP_TOKEN'))
+    vk_group = vk_session.get_api()
+    longpoll = VkBotLongPoll(vk_session, os.getenv('VK_GROUP_ID'))
 
-    with open('keyboard/keyboard.json', 'r', encoding='UTF-8') as f:
-        keyboard = f.read()
-
-    with open('keyboard/keyboard_search.json', 'r', encoding='UTF-8') as f:
-        keyboard_search = f.read()
-
-    with open('keyboard/keyboard_list.json', 'r', encoding='UTF-8') as f:
-        keyboard_list = f.read()
-
-    vk_group = vk_api.VkApi(token=TOKEN_VK_GROUP)
-    longpoll_group = VkLongPoll(vk_group)
-
-    db = DBManager()
-    db.create_tables()
     vk = VKManager()
+    db = DBManager()
 
-    user_id = None
-    user_data = None
-    partner_age_from = None
-    partner_age_to = None
-    partner_list = []
-    favorite_list = []
-    black_list = []
-    status = 'main'
-    flag = True
-    cursor = 0
-    message_mainmenu = f"Вы находитесь в главном меню.\n" \
-                       f"Используйте клавиатуру внизу для ввода команд."
+    sessions = {}
+    main_menu_message = 'Вы находитесь в главном меню.'
 
-    for event in longpoll_group.listen():
-        if event.type == VkEventType.MESSAGE_NEW:
-            if event.to_me:
-                request = event.text
+    for event in longpoll.listen():
+        if event.type == VkBotEventType.MESSAGE_NEW:
+            message = event.message.text
+            user_id = event.message.from_id
 
-                if flag:
-                    user_id = event.user_id
-                    user_data = vk.get_user_data(user_id)
-                    if user_data['age']:
-                        partner_age_from = user_data['age'] - 5
-                        partner_age_to = user_data['age'] + 5
-                    else:
-                        write_msg(user_id, 'Введите нижнюю границу возраста.')
-                        status = 'age1'
-                    flag = False
+            if user_id not in sessions:
+                user_data = vk.get_user_data(user_id)
+                sessions[user_id] = {
+                    'user_data': user_data,
+                    'partner_age_from': 0,
+                    'partner_age_to': 0,
+                    'partner_list': [],
+                    'favorite_partners': [],
+                    'blocked_partners': [],
+                    'is_checked': False,
+                    'menu_state': '',
+                    'cursor': 0
+                }
 
-                if request.isdigit() and status == 'age1':
-                    if int(request) in range(14, 99):
-                        partner_age_from = request
-                        status = 'age2'
-                    else:
-                        write_msg(user_id, 'Граница введена неверно. Повторите ввод.')
+            session = sessions[user_id]
 
-                elif request.isdigit() and status == 'age2':
-                    if int(request) in range(14, 99) and partner_age_from <= int(request):
-                        partner_age_to = request
-                        status = 'search'
-                    else:
-                        write_msg(user_id, 'Граница введена неверно. Повторите ввод.')
+            if not session['is_checked']:
+                if validate_user_data(session, message):
+                    session['is_checked'] = True
+                    session['menu_state'] = 'search'
+                    send_message(
+                        user_id,
+                        'Нажмите кнопку внизу для начала поиска партнёров.',
+                        keyboard_search
+                    )
 
-                elif request == 'Начать поиск' and status == 'main':
-                    write_msg(user_id, 'Идёт поиск...')
-                    if user_data['city_id']:
-                        partner_list = vk.get_partner_list(
-                            user_data['sex'],
-                            partner_age_from,
-                            partner_age_to,
-                            user_data['city_id']
-                        )
-                    else:
-                        partner_list = vk.get_partner_list(
-                            user_data['sex'],
-                            partner_age_from,
-                            partner_age_to
-                        )
-                    cursor = select_partner(
-                        user_data,
-                        partner_list,
-                        db,
-                        cursor=cursor - 1,
+            elif (
+                session['menu_state'] == 'search' and
+                message == 'Начать поиск'
+            ):
+                send_message(user_id, 'Выполняется поиск...')
+                session['partner_list'] = vk.get_partner_list(
+                    session['user_data']['sex'],
+                    session['partner_age_from'],
+                    session['partner_age_to'],
+                    session['user_data']['city_id']
+                )
+                session['menu_state'] = 'partners'
+                session['cursor'] = select_partner(
+                    user_data=session['user_data'],
+                    partner_list=session['partner_list'],
+                    database=db,
+                    cursor=session['cursor'] - 1,
+                    increment=1,
+                    keyboard=keyboard_partners,
+                    menu_state=session['menu_state']
+                )
+
+            elif (
+                session['menu_state'] == 'main' and
+                message == 'Список партнёров'
+            ):
+                session['menu_state'] = 'partners'
+                session['cursor'] = select_partner(
+                    user_data=session['user_data'],
+                    partner_list=session['partner_list'],
+                    database=db,
+                    cursor=session['cursor'] - 1,
+                    increment=1,
+                    keyboard=keyboard_partners,
+                    menu_state=session['menu_state']
+                )
+
+            elif (
+                session['menu_state'] == 'main' and
+                message == 'Чёрный список'
+            ):
+                session['blocked_partners'] = db.get_blocked_partners(
+                    session['user_data']
+                )
+                if session['blocked_partners']:
+                    session['menu_state'] = 'blocked'
+                    session['cursor'] = select_partner(
+                        user_data=session['user_data'],
+                        partner_list=session['blocked_partners'],
+                        database=db,
+                        cursor=session['cursor'] - 1,
                         increment=1,
-                        keyboard=keyboard_search,
-                        show_type='search'
+                        keyboard=keyboard_blocked,
+                        menu_state=session['menu_state']
                     )
-                    status = 'search'
-
-                elif request == 'Избранные' and status == 'main':
-                    write_msg(user_id, 'Показываю избранных...')
-                    favorite_list = db.get_favorite_list(user_data)
-                    if favorite_list:
-                        cursor = select_partner(
-                            user_data,
-                            favorite_list,
-                            db,
-                            cursor=cursor - 1,
-                            increment=1,
-                            keyboard=keyboard_list,
-                            show_type='favorite'
-                        )
-                        status = 'favorite'
-                    else:
-                        write_msg(user_id, 'В списке никого нет.', keyboard)
-
-                elif request == 'Чёрный список' and status == 'main':
-                    write_msg(user_id, 'Показываю чёрный список...')
-                    black_list = db.get_black_list(user_data)
-                    if black_list:
-                        cursor = select_partner(
-                            user_data,
-                            black_list,
-                            db,
-                            cursor=cursor - 1,
-                            increment=1,
-                            keyboard=keyboard_list,
-                            show_type='black'
-                        )
-                        status = 'black'
-                    else:
-                        write_msg(user_id, 'В списке никого нет.', keyboard)
-
-                elif request == 'След' and status == 'search':
-                    cursor = select_partner(
-                        user_data,
-                        partner_list,
-                        db,
-                        cursor,
-                        increment=1,
-                        keyboard=keyboard_search,
-                        show_type=status
-                    )
-
-                elif request == 'Пред' and status == 'search':
-                    cursor = select_partner(
-                        user_data,
-                        partner_list,
-                        db,
-                        cursor,
-                        increment=-1,
-                        keyboard=keyboard_search,
-                        show_type=status
-                    )
-
-                elif request == 'Добавить в избранное' and status == 'search':
-                    if db.find_in_favorite_list(user_data, partner_list[cursor]):
-                        write_msg(user_id, 'Партнёр уже добавлен в cписок избранных.', keyboard_search)
-                    else:
-                        if db.find_in_black_list(user_data, partner_list[cursor]):
-                            db.delete_from_black_list(user_data, partner_list[cursor])
-                        db.add_to_favorite_list(user_data, partner_list[cursor])
-                        write_msg(user_id, 'Партнёр добавлен в cписок избранных.', keyboard_search)
-
-                elif request == 'Добавить в чёрный список' and status == 'search':
-                    if db.find_in_black_list(user_data, partner_list[cursor]):
-                        write_msg(user_id, 'Партнёр уже добавлен в чёрный список.', keyboard_search)
-                    else:
-                        if db.find_in_favorite_list(user_data, partner_list[cursor]):
-                            db.delete_from_favorite_list(user_data, partner_list[cursor])
-                        db.add_to_black_list(user_data, partner_list[cursor])
-                        write_msg(user_id, 'Партнёр добавлен в чёрный cписок.', keyboard_search)
-
-                elif request == 'След' and status == 'favorite':
-                    cursor = select_partner(
-                        user_data,
-                        favorite_list,
-                        db,
-                        cursor,
-                        increment=1,
-                        keyboard=keyboard_list,
-                        show_type=status
-                    )
-
-                elif request == 'Пред' and status == 'favorite':
-                    cursor = select_partner(
-                        user_data,
-                        favorite_list,
-                        db,
-                        cursor,
-                        increment=-1,
-                        keyboard=keyboard_list,
-                        show_type=status
-                    )
-
-                elif request == 'Убрать из списка' and status == 'favorite':
-                    if db.find_in_favorite_list(user_data, favorite_list[cursor]):
-                        db.delete_from_favorite_list(user_data, favorite_list[cursor])
-                        write_msg(user_id, 'Партнёр удалён из списка избранных.', keyboard_list)
-                    else:
-                        write_msg(user_id, 'Партнёр уже удалён из списка избранных.', keyboard_list)
-
-                elif request == 'След' and status == 'black':
-                    cursor = select_partner(
-                        user_data,
-                        black_list,
-                        db,
-                        cursor,
-                        increment=1,
-                        keyboard=keyboard_list,
-                        show_type=status
-                    )
-
-                elif request == 'Пред' and status == 'black':
-                    cursor = select_partner(
-                        user_data,
-                        black_list,
-                        db,
-                        cursor,
-                        increment=-1,
-                        keyboard=keyboard_list,
-                        show_type=status
-                    )
-
-                elif request == 'Убрать из списка' and status == 'black':
-                    if db.find_in_black_list(user_data, black_list[cursor]):
-                        db.delete_from_black_list(user_data, black_list[cursor])
-                        write_msg(user_id, 'Партнёр удалён из чёрного списка.', keyboard_list)
-                    else:
-                        write_msg(user_id, 'Партнёр уже удалён из чёрного списка.', keyboard_list)
-
-                elif request == 'Выход в главное меню' and status in ['search', 'favorite', 'black']:
-                    status = 'main'
-                    cursor = 0
-                    write_msg(user_id, message_mainmenu, keyboard)
-
                 else:
-                    write_msg(user_id, message_mainmenu, keyboard)
+                    send_message(
+                        user_id,
+                        'В чёрном списке никого нет.',
+                        keyboard_main
+                    )
+
+            elif (
+                session['menu_state'] == 'main' and
+                message == 'Список избранных'
+            ):
+                session['favorite_partners'] = db.get_favorite_partners(
+                    session['user_data']
+                )
+                if session['favorite_partners']:
+                    session['menu_state'] = 'favorites'
+                    session['cursor'] = select_partner(
+                        user_data=session['user_data'],
+                        partner_list=session['favorite_partners'],
+                        database=db,
+                        cursor=session['cursor'] - 1,
+                        increment=1,
+                        keyboard=keyboard_favorites,
+                        menu_state=session['menu_state']
+                    )
+                else:
+                    send_message(
+                        user_id,
+                        'В списке избранных никого нет.',
+                        keyboard_main
+                    )
+
+            elif (
+                session['menu_state'] == 'partners' and
+                message == '<< Предыдущий'
+            ):
+                session['cursor'] = select_partner(
+                    user_data=session['user_data'],
+                    partner_list=session['partner_list'],
+                    database=db,
+                    cursor=session['cursor'],
+                    increment=-1,
+                    keyboard=keyboard_partners,
+                    menu_state=session['menu_state']
+                )
+
+            elif (
+                session['menu_state'] == 'partners' and
+                message == 'Следующий >>'
+            ):
+                session['cursor'] = select_partner(
+                    user_data=session['user_data'],
+                    partner_list=session['partner_list'],
+                    database=db,
+                    cursor=session['cursor'],
+                    increment=1,
+                    keyboard=keyboard_partners,
+                    menu_state=session['menu_state']
+                )
+
+            elif (
+                session['menu_state'] == 'partners' and
+                message == 'Добавить в чёрный список'
+            ):
+                db.add_to_blocked_partners(
+                    session['user_data'],
+                    session['partner_list'][session['cursor']]
+                )
+                send_message(
+                    user_id,
+                    'Партнёр добавлен в чёрный список.',
+                    keyboard_partners
+                )
+
+            elif (
+                session['menu_state'] == 'partners' and
+                message == 'Добавить в список избранных'
+            ):
+                db.add_to_favorite_partners(
+                    session['user_data'],
+                    session['partner_list'][session['cursor']]
+                )
+                send_message(
+                    user_id,
+                    'Партнёр добавлен в список избранных.',
+                    keyboard_partners
+                )
+
+            elif (
+                session['menu_state'] == 'favorites' and
+                message == '<< Предыдущий'
+            ):
+                session['cursor'] = select_partner(
+                    user_data=session['user_data'],
+                    partner_list=session['favorite_partners'],
+                    database=db,
+                    cursor=session['cursor'],
+                    increment=-1,
+                    keyboard=keyboard_favorites,
+                    menu_state=session['menu_state']
+                )
+
+            elif (
+                session['menu_state'] == 'favorites' and
+                message == 'Следующий >>'
+            ):
+                session['cursor'] = select_partner(
+                    user_data=session['user_data'],
+                    partner_list=session['favorite_partners'],
+                    database=db,
+                    cursor=session['cursor'],
+                    increment=1,
+                    keyboard=keyboard_favorites,
+                    menu_state=session['menu_state']
+                )
+
+            elif (
+                session['menu_state'] == 'favorites' and
+                message == 'Удалить из списка избранных'
+            ):
+                partner_data = session['favorite_partners'][session['cursor']]
+                db.delete_from_favorite_partners(
+                    session['user_data'], partner_data
+                )
+                session['favorite_partners'].remove(partner_data)
+                if session['favorite_partners']:
+                    send_message(
+                        user_id,
+                        'Партнёр удалён из списка избранных.',
+                        keyboard_favorites
+                    )
+                else:
+                    send_message(
+                        user_id,
+                        'Партнёр удалён, в списке избранных никого нет.',
+                        keyboard_main
+                    )
+                    session['menu_state'] = 'main'
+
+            elif (
+                session['menu_state'] == 'blocked' and
+                message == '<< Предыдущий'
+            ):
+                session['cursor'] = select_partner(
+                    user_data=session['user_data'],
+                    partner_list=session['blocked_partners'],
+                    database=db,
+                    cursor=session['cursor'],
+                    increment=-1,
+                    keyboard=keyboard_blocked,
+                    menu_state=session['menu_state']
+                )
+
+            elif (
+                session['menu_state'] == 'blocked' and
+                message == 'Следующий >>'
+            ):
+                session['cursor'] = select_partner(
+                    user_data=session['user_data'],
+                    partner_list=session['blocked_partners'],
+                    database=db,
+                    cursor=session['cursor'],
+                    increment=1,
+                    keyboard=keyboard_blocked,
+                    menu_state=session['menu_state']
+                )
+
+            elif (
+                session['menu_state'] == 'blocked' and
+                message == 'Удалить из чёрного списка'
+            ):
+                partner_data = session['blocked_partners'][session['cursor']]
+                db.delete_from_blocked_partners(
+                    session['user_data'], partner_data
+                )
+                session['blocked_partners'].remove(partner_data)
+                if session['blocked_partners']:
+                    send_message(
+                        user_id,
+                        'Партнёр удалён из чёрного списка.',
+                        keyboard_blocked
+                    )
+                else:
+                    send_message(
+                        user_id,
+                        'Партнёр удалён, в чёрном списке никого нет.',
+                        keyboard_main
+                    )
+                    session['menu_state'] = 'main'
+
+            elif (
+                session['menu_state'] in ['partners', 'favorites', 'blocked']
+                and message == 'Выход в главное меню'
+            ):
+                session['menu_state'] = 'main'
+                session['cursor'] = 0
+                send_message(user_id, main_menu_message, keyboard_main)
+
+            elif session['menu_state'] == 'main':
+                send_message(user_id, main_menu_message, keyboard_main)
